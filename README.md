@@ -20,7 +20,7 @@ http://0.0.0.0:8089/
 
 <img width="1566" alt="locust1" src="https://github.com/user-attachments/assets/4d7411bf-ee27-4ad9-bc52-8e0113946285" />
 
-<a href="[http://example.com/](https://youtu.be/Saa-Qr3XOlI)" target="_blank">Video of test run</a>
+[Video of test run](https://youtu.be/Saa-Qr3XOlI){target="_blank"}
 
 1 user + 1 user rampup \
 10 user + 1 user rampup \
