@@ -1,32 +1,31 @@
 from locust import HttpUser, task, between
-from locust.contrib.fasthttp import FastHttpUser
 import json
+import random
 
 class UserBehavior(HttpUser):
     wait_time = between(1, 2)  # Time between tasks
     
     def on_start(self):
         """Initialize test data"""
+        # Generate unique identifier for this user instance
+        self.user_id = random.randint(1000, 9999)
+        
         self.register_data = {
-            "fullName": "Test User",
-            "userName": "testuser",
-            "email": "test@example.com",
+            "fullName": f"Test User {self.user_id}",
+            "userName": f"testuser{self.user_id}",
+            "email": f"test{self.user_id}@example.com",
             "password": "test123",
-            "phone": "1234567890"
+            "phone": f"123{self.user_id}"
         }
         
         self.login_data = {
-            "userName": "testuser",
-            "email": "test@example.com",
+            "userName": f"testuser{self.user_id}",
+            "email": f"test{self.user_id}@example.com",
             "password": "test123"
         }
 
     @task(2)  # Load testing /client_register
     def register_client(self):
-        # Modify email to avoid duplicate registration errors
-        self.register_data["email"] = f"test{self.user_count}@example.com"
-        self.register_data["userName"] = f"testuser{self.user_count}"
-        
         with self.client.post(
             "/client_registeration",
             data=self.register_data,
@@ -36,9 +35,11 @@ class UserBehavior(HttpUser):
                 if response.json()["msg"] in ["User Registered", "Email already Exist"]:
                     response.success()
                 else:
-                    response.failure("Registration failed")
+                    response.failure(f"Registration failed: {response.json()}")
             except json.JSONDecodeError:
                 response.failure("Invalid JSON response")
+            except Exception as e:
+                response.failure(f"Error: {str(e)}")
 
     @task(3)  # Stress testing /client_login
     def login_client(self):
@@ -51,9 +52,11 @@ class UserBehavior(HttpUser):
                 if "token" in response.json() or response.json()["msg"] == "In correct email or password":
                     response.success()
                 else:
-                    response.failure("Login failed")
+                    response.failure(f"Login failed: {response.json()}")
             except json.JSONDecodeError:
                 response.failure("Invalid JSON response")
+            except Exception as e:
+                response.failure(f"Error: {str(e)}")
 
 class StressTest(UserBehavior):
     """Specific class for stress testing with more aggressive parameters"""
@@ -61,11 +64,30 @@ class StressTest(UserBehavior):
     
     @task(1)
     def login_stress(self):
-        # Repeatedly hammer the login endpoint
-        for _ in range(5):  # Multiple attempts per task
-            self.login_client()
+        # Create random login attempts
+        random_user_id = random.randint(1000, 9999)
+        stress_login_data = {
+            "userName": f"testuser{random_user_id}",
+            "email": f"test{random_user_id}@example.com",
+            "password": "test123"
+        }
+        
+        with self.client.post(
+            "/client_login",
+            data=stress_login_data,
+            catch_response=True
+        ) as response:
+            try:
+                if "token" in response.json() or response.json()["msg"] == "In correct email or password":
+                    response.success()
+                else:
+                    response.failure(f"Stress login failed: {response.json()}")
+            except json.JSONDecodeError:
+                response.failure("Invalid JSON response")
+            except Exception as e:
+                response.failure(f"Error: {str(e)}")
 
-# BDD-style scenarios
+# BDD-style scenarios documentation
 def test_load_scenario():
     """
     Given a Flask application is running
@@ -73,7 +95,7 @@ def test_load_scenario():
     Then the system should handle the load without errors
     And response times should remain under acceptable thresholds
     """
-    pass  # This is implemented through the UserBehavior class above
+    pass  # Implemented through the UserBehavior class
 
 def test_stress_scenario():
     """
@@ -82,4 +104,4 @@ def test_stress_scenario():
     Then it should maintain functionality
     And either serve requests or fail gracefully
     """
-    pass  # This is implemented through the StressTest class above
+    pass  # Implemented through the StressTest class
